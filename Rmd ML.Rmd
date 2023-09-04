@@ -1,0 +1,53 @@
+# PRACTICAL MACHINE LEARNING PROJECT
+
+Reading the data from the directory.
+```{r}
+train.raw= read.csv("pml-training.csv")
+test.raw= read.csv("pml-testing.csv")
+```
+When dealing with lots variables, we need to sort out ones which explain nearly zero variance. That's why we use the caret package. First, we're cleaning the training and testing data set.
+```{r}
+library(caret)
+nzv= nearZeroVar(train.raw)
+test= test.raw[,-nzv]
+test= test[,colSums(is.na(test))==0]
+train= train.raw[,-nzv]
+train= train[,colSums(is.na(train))==0]
+```
+After sorting out our data, we can start with the model building. First of all, we will be building a random forest model and will continue with decision trees to see the differences between these models. Due to space restrictions, we won't be plotting the random forest models; we'll only plot the latter decision trees models.
+```{r}
+set.seed(13)
+rfControl= trainControl(method= "cv", number= 3, verboseIter= F)
+rfModel= train(classe ~ ., data= train, method= "rf", trControl= rfControl)
+rfModel$finalModel
+rfPred= predict(rfModel, newdata= test)
+rfPred
+datapart= createDataPartition(train$classe, p= 0.75, list= F)
+train1= train[datapart, ]
+train2= train[-datapart, ]
+rfModel1= train(classe ~., data= train1, method= "rf", trControl= rfControl)
+rfModel1$finalModel
+rfPred1= predict(rfModel1, newdata= train2)
+train2$classe= as.factor(train2$classe)
+conMatRF= confusionMatrix(train2$classe, rfPred1)
+conMatRF
+predict(rfModel1, test)
+```
+We can see that both random forest models do give the same predictions in the test set. The only difference is that the second random forest model is slightly more accurate. Now, we'll move on to the decision trees model. We'll do the same thing as with the random forest models. First we will train the model on only one training data set and then we will do it with the 2 training sets and do the predictions for both models.
+```{r}
+library(rpart)
+library(rpart.plot)
+decTree= rpart(classe~., data= train, method= "class")
+rpart.plot(decTree)
+predTree= predict(decTree, test, type= "class")
+predTree
+decTree1= rpart(classe~., data= train1, method= "class")
+rpart.plot(decTree1)
+predTree1= predict(decTree1, test, method= "class")
+predTree1
+decTree2= rpart(classe~., data= train2, method= "class")
+rpart.plot(decTree2)
+predTree2= predict(decTree2, test, method= "class")
+predTree2
+```
+We see that we actually get the same predictions as in the random forest models. Between the various decision tree models, there are minor differences in the branching.
